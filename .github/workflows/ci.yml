@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [dev]
+
+jobs:
+  lint:
+    name: sqlfluff lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r ci/requirements.txt
+      - name: Extract SQL from notebooks
+        run: python ci/notebook_sql.py --emit-dir build/lint queries/*.sql
+      - name: Lint
+        run: sqlfluff lint build/lint
+
+  dry-run:
+    name: dev EXPLAIN dry-run
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r ci/requirements.txt
+      - name: EXPLAIN against dev warehouse
+        working-directory: ci
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          DATABRICKS_WAREHOUSE_ID: ${{ secrets.DATABRICKS_WAREHOUSE_ID }}
+        run: |
+          if [ -z "$DATABRICKS_HOST" ]; then
+            echo "::warning::dev environment secrets not set — skipping dry-run. Add DATABRICKS_HOST, DATABRICKS_TOKEN, DATABRICKS_WAREHOUSE_ID to the 'dev' environment to enable it."
+            exit 0
+          fi
+          python dryrun.py ../queries/*.sql

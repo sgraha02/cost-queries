@@ -1,0 +1,2 @@
+sqlfluff==4.2.2
+databricks-sdk>=0.30

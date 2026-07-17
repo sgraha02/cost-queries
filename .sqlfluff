@@ -1,0 +1,22 @@
+[sqlfluff]
+dialect = databricks
+templater = placeholder
+max_line_length = 120
+# references.consistent / self_alias fire on struct-field access (e.g.
+# usage_metadata.warehouse_id AS warehouse_id) which is intentional here.
+exclude_rules = RF03, AL09
+
+[sqlfluff:indentation]
+tab_space_size = 2
+
+# The queries use :name parameter markers bound to notebook widgets. The
+# placeholder templater swaps them for sample literals so sqlfluff can parse
+# the SQL. These values are lint-only and never run.
+[sqlfluff:templater:placeholder]
+param_style = colon
+warehouse_id = 'sample-warehouse-id'
+start_ts = '2026-01-01 00:00:00'
+end_ts = '2026-01-02 00:00:00'
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = upper

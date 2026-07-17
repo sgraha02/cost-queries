@@ -29,3 +29,24 @@ correctly in both places.
 ## Layout
 
 - `queries/` — the SQL / notebook queries
+- `ci/` — CI helpers (`notebook_sql.py` SQL extractor, `dryrun.py` EXPLAIN check)
+- `.github/workflows/ci.yml` — GitHub Actions pipeline
+
+## CI
+
+Runs on PRs into `main` and pushes to `dev`:
+
+1. **Lint** — `notebook_sql.py` strips the `-- MAGIC` / `-- COMMAND` notebook
+   markers and extracts the raw SQL cells, then `sqlfluff` lints them. We lint
+   the *extracted* SQL (not the notebook) because sqlfluff misreads notebook
+   markers. Note: `sqlfluff fix` is **not** safe on notebook-source files — it
+   deletes `-- COMMAND ----------` cell separators. CI only ever runs `lint`.
+2. **dev dry-run** — `dryrun.py` runs `EXPLAIN` on each statement against a dev
+   SQL warehouse, catching missing columns / tables / syntax errors before
+   promotion. `:param` markers are bound to sample values.
+
+The dry-run reads three secrets from the `dev` GitHub environment:
+`DATABRICKS_HOST`, `DATABRICKS_TOKEN`, `DATABRICKS_WAREHOUSE_ID`. Until those are
+set the dry-run self-skips with a warning; lint still runs. The customer VDI is
+never contacted by CI — promotion into it stays a manual Git-folder Pull of
+`main`.

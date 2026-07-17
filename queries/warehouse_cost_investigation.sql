@@ -17,8 +17,8 @@
 -- COMMAND ----------
 
 CREATE WIDGET TEXT warehouse_id DEFAULT '';
-CREATE WIDGET TEXT start_ts     DEFAULT '';  -- UTC, e.g. 2026-07-01 00:00:00
-CREATE WIDGET TEXT end_ts       DEFAULT '';  -- UTC, e.g. 2026-07-02 00:00:00
+CREATE WIDGET TEXT start_ts DEFAULT '';  -- UTC, e.g. 2026-07-01 00:00:00
+CREATE WIDGET TEXT end_ts DEFAULT '';  -- UTC, e.g. 2026-07-02 00:00:00
 
 -- COMMAND ----------
 
@@ -29,9 +29,10 @@ CREATE WIDGET TEXT end_ts       DEFAULT '';  -- UTC, e.g. 2026-07-02 00:00:00
 SELECT
   MIN(start_time) AS first_failed_query_time,
   MAX(start_time) AS last_failed_query_time,
-  COUNT(*)        AS failed_query_count
+  COUNT(*) AS failed_query_count
 FROM system.query.history
-WHERE compute.warehouse_id = :warehouse_id
+WHERE
+  compute.warehouse_id = :warehouse_id
   AND execution_status = 'FAILED'
   AND error_message LIKE '%INSUFFICIENT_PERMISSIONS%';
 
@@ -42,13 +43,14 @@ WHERE compute.warehouse_id = :warehouse_id
 -- COMMAND ----------
 
 SELECT
-  usage_metadata.warehouse_id AS warehouse_id,
-  SUM(usage_quantity)         AS total_dbus
+  usage_metadata.warehouse_id,
+  SUM(usage_quantity) AS total_dbus
 FROM system.billing.usage
-WHERE usage_metadata.warehouse_id = :warehouse_id
+WHERE
+  usage_metadata.warehouse_id = :warehouse_id
   AND usage_unit = 'DBU'
   AND usage_start_time >= CAST(:start_ts AS TIMESTAMP)
-  AND usage_end_time   <  CAST(:end_ts   AS TIMESTAMP)
+  AND usage_end_time < CAST(:end_ts AS TIMESTAMP)
 GROUP BY usage_metadata.warehouse_id;
 
 -- COMMAND ----------
@@ -62,9 +64,10 @@ SELECT
   sku_name,
   ROUND(SUM(usage_quantity), 2) AS total_dbus
 FROM system.billing.usage
-WHERE usage_metadata.warehouse_id = :warehouse_id
+WHERE
+  usage_metadata.warehouse_id = :warehouse_id
   AND usage_unit = 'DBU'
   AND usage_start_time >= CAST(:start_ts AS TIMESTAMP)
-  AND usage_end_time   <  CAST(:end_ts   AS TIMESTAMP)
+  AND usage_end_time < CAST(:end_ts AS TIMESTAMP)
 GROUP BY usage_date, sku_name
 ORDER BY usage_date;
