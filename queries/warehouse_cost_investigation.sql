@@ -71,3 +71,37 @@ WHERE
   AND usage_end_time < CAST(:end_ts AS TIMESTAMP)
 GROUP BY usage_date, sku_name
 ORDER BY usage_date;
+
+-- COMMAND ----------
+
+-- MAGIC %md ## Query 4 — DBUs during hours that had failures
+
+-- COMMAND ----------
+
+WITH failed_hours AS (
+  SELECT DISTINCT DATE_TRUNC('hour', start_time) AS failure_hour
+  FROM system.query.history
+  WHERE
+    compute.warehouse_id = :warehouse_id
+    AND execution_status = 'FAILED'
+    AND error_message LIKE '%INSUFFICIENT_PERMISSIONS%'
+),
+
+warehouse_usage AS (
+  SELECT
+    DATE_TRUNC('hour', usage_start_time) AS usage_hour,
+    SUM(usage_quantity) AS dbus
+  FROM system.billing.usage
+  WHERE
+    usage_metadata.warehouse_id = :warehouse_id
+    AND usage_unit = 'DBU'
+  GROUP BY DATE_TRUNC('hour', usage_start_time)
+)
+
+SELECT
+  u.usage_hour,
+  u.dbus
+FROM warehouse_usage AS u
+INNER JOIN failed_hours AS f
+  ON u.usage_hour = f.failure_hour
+ORDER BY u.usage_hour;
